@@ -49,7 +49,7 @@ app.get('/getuser', (req, res) => {
         if (err) {
             return res.status(500).send({ message: 'Failed to authenticate token.' });
         }
-
+        
         res.status(200).send({
             message: `Welcome ${decoded.id}!`,
             username: decoded.id
@@ -77,18 +77,24 @@ app.put('/update', (req, res) => {
 
         // Update user profile details
         const { username, password } = req.body;
+        let message = 'User profile updated successfully!';
+        let newToken = token; // Default to the old token
+
         if (username) {
-            res.status(200).send({ message: ` Username changed from ${user.username} to ${username} `});
+            message = `Username changed from ${user.username} to ${username}`;
             user.username = username;
-            console.log(user.username);
+            console.log(`Username updated to: ${user.username}`);
+
+            // Reissue a new token with the updated username
+            newToken = jwt.sign({ id: user.username }, SECRET_KEY, { expiresIn: 86400 });
+            console.log('New Token:', newToken); // Debugging line
         }
         if (password) {
-            res.status(200).send({ message: ` Username changed from ${user.password} to ${password} `});
             user.password = bcrypt.hashSync(password, 8);
-            console.log(user.password);
+            console.log('Password updated successfully');
         }
 
-        res.status(200).send({ message: 'User profile updated successfully!' });
+        res.status(200).send({ message, token: newToken });
     });
 });
 
