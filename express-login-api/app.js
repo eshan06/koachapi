@@ -51,8 +51,8 @@ app.get('/getuser', (req, res) => {
         }
 
         res.status(200).send({
-            username: user.username,
-            message: `Welcome ${decoded.id}!`
+            message: `Welcome ${decoded.id}!`,
+            username: decoded.id
         });
     });
 });
@@ -78,10 +78,14 @@ app.put('/update', (req, res) => {
         // Update user profile details
         const { username, password } = req.body;
         if (username) {
+            res.status(200).send({ message: ` Username changed from ${user.username} to ${username} `});
             user.username = username;
+            console.log(user.username);
         }
         if (password) {
+            res.status(200).send({ message: ` Username changed from ${user.password} to ${password} `});
             user.password = bcrypt.hashSync(password, 8);
+            console.log(user.password);
         }
 
         res.status(200).send({ message: 'User profile updated successfully!' });
