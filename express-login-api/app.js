@@ -1,130 +1,149 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const User = require("./config")
 require('dotenv').config();
 
 const app = express();
 app.use(express.json());
 
-const users = []; // In-memory user storage
-
 // Secret Key for JWT
 const SECRET_KEY = process.env.JWT_KEY;
 
 // Register endpoint
-app.post('/register', (req, res) => {
+app.post('/register', async (req, res) => {
     const { username, password } = req.body;
     const hashedPassword = bcrypt.hashSync(password, 8);
 
-    users.push({ username, password: hashedPassword });
-    res.status(201).send({ message: 'User registered successfully!' });
+    try {
+        const user = new User({ username, password: hashedPassword });
+        await user.save();
+        res.status(201).send({ message: 'User registered successfully' });
+    } catch (err) {
+        res.status(500).send({ message: 'Error registering user', error: err });
+    }
 });
 
 // Login endpoint
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    const user = users.find(u => u.username === username);
 
-    if (!user) {
-        return res.status(404).send({ message: 'User not found!' });
-    }
-
-    const passwordIsValid = bcrypt.compareSync(password, user.password);
-    if (!passwordIsValid) {
-        return res.status(401).send({ message: 'Invalid password!' });
-    }
-
-    const token = jwt.sign({ id: user.username }, SECRET_KEY, { expiresIn: 86400 }); // 24 hours
-    res.status(200).send({ auth: true, token });
-});
-
-// Get User Profile endpoint
-app.get('/getuser', (req, res) => {
-    const token = req.headers['x-access-token'];
-    if (!token) {
-        return res.status(401).send({ message: 'No token provided!' });
-    }
-
-    jwt.verify(token, SECRET_KEY, (err, decoded) => {
-        if (err) {
-            return res.status(500).send({ message: 'Failed to authenticate token.' });
-        }
-        
-        res.status(200).send({
-            message: `Welcome ${decoded.id}!`,
-            username: decoded.id
-        });
-    });
-});
-
-// Update User Profile endpoint
-app.put('/update', (req, res) => {
-    const token = req.headers['x-access-token'];
-    if (!token) {
-        return res.status(401).send({ message: 'No token provided!' });
-    }
-
-    jwt.verify(token, SECRET_KEY, (err, decoded) => {
-        if (err) {
-            return res.status(500).send({ message: 'Failed to authenticate token.' });
-        }
-
-        // Find the user profile based on the decoded ID
-        const user = users.find(u => u.username === decoded.id);
+    try {
+        const user = await User.findOne({ username });
         if (!user) {
-            return res.status(404).send({ message: 'User not found!' });
+            return res.status(404).send({ message: 'User not found' });
         }
 
-        // Update user profile details
-        const { username, password } = req.body;
-        let message = 'User profile updated successfully!';
-        let newToken = token; // Default to the old token
-
-        if (username) {
-            message = `Username changed from ${user.username} to ${username}`;
-            user.username = username;
-            console.log(`Username updated to: ${user.username}`);
-
-            // Reissue a new token with the updated username
-            newToken = jwt.sign({ id: user.username }, SECRET_KEY, { expiresIn: 86400 });
-            console.log('New Token:', newToken); // Debugging line
-        }
-        if (password) {
-            user.password = bcrypt.hashSync(password, 8);
-            console.log('Password updated successfully');
+        const passwordIsValid = bcrypt.compareSync(password, user.password);
+        if (!passwordIsValid) {
+            return res.status(401).send({ message: 'Invalid password' });
         }
 
-        res.status(200).send({ message, token: newToken });
-    });
+        const token = jwt.sign({ id: user._id }, SECRET_KEY, { expiresIn: 86400 }); // 24 hours
+        res.status(200).send({ auth: true, token });
+    } catch (err) {
+        res.status(500).send({ message: 'Error logging in', error: err });
+    }
 });
 
-// Delete User Profile endpoint
-app.delete('/delete', (req, res) => {
+// Get User endpoint
+app.get('/getuser', async (req, res) => {
     const token = req.headers['x-access-token'];
     if (!token) {
-        return res.status(401).send({ message: 'No token provided!' });
+        return res.status(401).send({ message: 'No token provided' });
     }
 
-    jwt.verify(token, SECRET_KEY, (err, decoded) => {
+    jwt.verify(token, SECRET_KEY, async (err, decoded) => {
         if (err) {
             return res.status(500).send({ message: 'Failed to authenticate token.' });
         }
 
-        // Find the user index based on the decoded ID
-        const userIndex = users.findIndex(u => u.username === decoded.id);
-        if (userIndex === -1) {
-            return res.status(404).send({ message: 'User not found!' });
+        try {
+            const user = await User.findById(decoded.id);
+            if (!user) {
+                return res.status(404).send({ message: 'User not found' });
+            }
+
+            res.status(200).send({
+                message: `Welcome ${user.username}`,
+                username: user.username
+            });
+        } catch (err) {
+            console.error('Error fetching user:', err);
+            res.status(500).send({ message: 'Error fetching user', error: err.message });
         }
-
-        // Remove the user from the array
-        users.splice(userIndex, 1);
-
-        res.status(200).send({ message: 'User profile deleted successfully!' });
     });
 });
 
-// Start the server
+// Update User endpoint
+app.put('/update', async (req, res) => {
+    const token = req.headers['x-access-token'];
+    if (!token) {
+        return res.status(401).send({ message: 'No token provided' });
+    }
+
+    jwt.verify(token, SECRET_KEY, async (err, decoded) => {
+        if (err) {
+            return res.status(500).send({ message: 'Failed to authenticate token.' });
+        }
+
+        try {
+            const user = await User.findById(decoded.id);
+            if (!user) {
+                return res.status(404).send({ message: 'User not found' });
+            }
+
+            const { username, password } = req.body;
+            let message = 'User profile updated successfully';
+
+            if (username) {
+                user.username = username;
+                message = `Username changed to ${username}`;
+            }
+            if (password) {
+                user.password = bcrypt.hashSync(password, 8);
+                message = 'Password updated successfully';
+            }
+
+            await user.save();
+            res.status(200).send({ message });
+        } catch (err) {
+            console.error('Error updating user:', err);
+            res.status(500).send({ message: 'Error updating user', error: err.message });
+        }
+    });
+});
+
+// Delete User endpoint
+app.delete('/delete', async (req, res) => {
+    const token = req.headers['x-access-token'];
+    if (!token) {
+        return res.status(401).send({ message: 'No token provided' });
+    }
+
+    jwt.verify(token, SECRET_KEY, async (err, decoded) => {
+        if (err) {
+            return res.status(500).send({ message: 'Failed to authenticate token.' });
+        }
+
+        try {
+            const deletionResult = await User.deleteOne({ _id: decoded.id });
+            if (deletionResult.deletedCount === 0) {
+                return res.status(404).send({ message: 'User not found' });
+            }
+
+            res.status(200).send({ message: 'User profile deleted successfully' });
+        } catch (err) {
+            console.error('Error deleting user:', err);
+            res.status(500).send({ message: 'Error deleting user', error: err.message });
+        }
+    });
+});
+
+// Start server
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 }); 
+
+module.exports = app;
