@@ -11,7 +11,7 @@ mongoose.connect(process.env.SERVER, {
     console.error('Could not connect to MongoDB', err);
 });
 
-// define schemaf
+// define schema
 const userSchema = new mongoose.Schema({
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true }

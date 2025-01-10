@@ -100,3 +100,9 @@ This is a simple Express.js API for user registration, login, and user managemen
 ## Running Tests
 
 To run the tests, use the following command:
+   ```bash
+   npx jest --detectOpenHandles
+   ```
+
+This command will execute the test suite for the application and provide feedback on the functionality and correctness of the code.
+After running the tests, you can review the test results to ensure that the application is functioning as expected.

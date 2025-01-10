@@ -1,20 +1,40 @@
+// requirements
+require('dotenv').config();
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require("./config")
-require('dotenv').config();
-
+const swaggerUi = require('swagger-ui-express');
+const YAML = require('yamljs');
+const openApiSpec = YAML.load('openapi.yaml');
 const app = express();
 app.use(express.json());
+
+// Documentation path
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
 // Secret Key for JWT
 const SECRET_KEY = process.env.JWT_KEY;
 
+// Define a route to handle the root path
+app.get('/', (req, res) => {
+    res.send('Welcome to the API');
+});
+
 // Register endpoint
 app.post('/register', async (req, res) => {
     const { username, password } = req.body;
+    // Check if username and password are provided
+    if (!username || !password) {
+        return res.status(400).send({ message: 'Username and password are required' });
+    }
+    // Check if the username already exists
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
+        return res.status(409).send({ message: 'User already exists' });
+    }
     const hashedPassword = bcrypt.hashSync(password, 8);
-
+    
     try {
         const user = new User({ username, password: hashedPassword });
         await user.save();
@@ -92,21 +112,18 @@ app.put('/update', async (req, res) => {
             if (!user) {
                 return res.status(404).send({ message: 'User not found' });
             }
-
             const { username, password } = req.body;
-            let message = 'User profile updated successfully';
 
             if (username) {
                 user.username = username;
-                message = `Username changed to ${username}`;
+                console.log(`Username changed to ${username}`);
             }
             if (password) {
                 user.password = bcrypt.hashSync(password, 8);
-                message = 'Password updated successfully';
             }
 
             await user.save();
-            res.status(200).send({ message });
+            res.status(200).send({ message: 'User profile updated successfully' });
         } catch (err) {
             console.error('Error updating user:', err);
             res.status(500).send({ message: 'Error updating user', error: err.message });
