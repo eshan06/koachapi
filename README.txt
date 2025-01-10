@@ -106,3 +106,10 @@ To run the tests, use the following command:
 
 This command will execute the test suite for the application and provide feedback on the functionality and correctness of the code.
 After running the tests, you can review the test results to ensure that the application is functioning as expected.
+
+## Accessing API Documentation
+
+To access the API documentation, navigate to the following URL in your web browser:
+http://localhost:3000/api-docs
+
+This URL will display the Swagger UI interface, providing detailed documentation for the API endpoints, request and response formats, and other relevant information.
