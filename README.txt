@@ -25,6 +25,7 @@ This is a simple Express.js API for user registration, login, and user managemen
 
 4. Start the server:
    ```bash
+   cd ..
    npm start
    ```
 
