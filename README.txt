@@ -6,7 +6,7 @@ This is a simple Express.js API for user registration, login, and user managemen
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/eshan06/express-login-api.git
+   git clone https://github.com/eshan06/koachapi.git
    ```
 
 2. Install dependencies:
